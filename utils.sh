@@ -2,18 +2,27 @@
 #
 # Author: Anton Stoychev <antitoxic@gmail.com>
 #
-source ./file-utils.sh
-source ./dir-utils.sh
+SCRIPT=`readlink -f $0`
+SCRIPTPATH=`dirname $SCRIPT`
+
+source $SCRIPTPATH/lib/utils/file-utils.sh
+source $SCRIPTPATH/lib/utils/dir-utils.sh
 
 usage()
 {
-    cat << EOF
-
-Copyright (C) Anton Stoychev <antitoxic@gmail.com> 2010
-
-Usage: Transforms Ubuntu into usable web develeopment workstation.
-EOF
+    info "* Copyright (C) Anton Stoychev <antitoxic@gmail.com> 2010
+* Usage: Transforms Ubuntu into usable web develeopment workstation."
     exit 1
+}
+info()
+{
+    cat << EOF
+----------------------------
+*
+${1}
+*
+----------------------------
+EOF
 }
 
 debug_print()
@@ -69,7 +78,7 @@ install_apt()
     done
 
     # Download all missing debs (try max 10 times)
-    retry_command 10 5 sudo apt-get --download-only -y install ${P}
+    retry_command 10 5 sudo apt-get --download-only --force-yes -y install ${P}
     if [ ${RET} -ne 0 ]; then
         echo ""
         echo "Program aborted due to fetch failures."
@@ -80,6 +89,49 @@ install_apt()
 }
 
 
+function remove_apt_source_duplicates() {
+finddupes=$(unset flist; declare -A flist
+while read -r sum fname; do
+    if [[ ${flist[$sum]} ]]; then
+        printf 'sudo rm -- "%s" # Same as >%s<\n' "$fname" "${flist[$sum]}" 
+    else
+        flist[$sum]="$fname"
+    fi
+done <  <(find /etc/apt/sources.list.d/ -name "*.list" -exec sha256sum {} +)  >/tmp/.rmdups)
+
+if [[ -s /tmp/.rmdups ]]; then
+	chmod +x /tmp/.rmdups
+	sudo bash /tmp/.rmdups 
+        sudo rm /tmp/.rmdups 
+	update_apt
+fi
+}
+function remove_apt_source() {
+	subject=${1}
+	subject=`echo $subject | sed 's/\./\\\\./g'`
+	subject=`echo $subject | sed 's/\?/\\\\?/g'`
+	FILES=`grep -l '^[^#]*'$subject /etc/apt/sources.list.d/*.list`
+	for f in $FILES
+	do
+	  string=$RET
+	  replacement=''
+	  RET=`sed -e "s@^[^#]*$subject.*@$replacement@" $f`
+	  #overwrite_save_file "$filePath" "$RET"
+	  overwrite_save_file "$f" "$RET"
+	done
+}
+
+
+function add_apt_source() {
+	echo -e ${1} >/tmp/${2}.list
+	sudo cp /tmp/${2}.list /etc/apt/sources.list.d/
+	rm /tmp/${2}.list
+}
+
+function wget_apt_key() {
+	wget ${1} --output-document="/tmp/apt_key"
+	apt-key add /tmp/apt_key
+}
 
 
 remove_apt()
@@ -288,6 +340,20 @@ fix_ini_file_comments()
 	overwrite_save_file "$filePath" "$updated"
 }
 
+input_pass() 
+{
+	promptMsg=${1}
+	echo $promptMsg
+	while read -s var; do
+		if [ -z "$var" ]
+		then
+			echo "It cannot be empty. Try again:"
+		else
+			RET=$var
+			break
+		fi
+	done
+}
 input_nonempty() 
 {
 	promptMsg=$1
@@ -298,6 +364,7 @@ input_nonempty()
 			echo "It cannot be empty. Try again:"
 		else
 			RET=$var
+			break
 		fi
 	done
 }
