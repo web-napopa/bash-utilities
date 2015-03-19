@@ -2,11 +2,10 @@
 #
 # Author: Anton Stoychev <antitoxic@gmail.com>
 #
-SCRIPT=`readlink -f $0`
-SCRIPTPATH=`dirname $SCRIPT`
 
-source $SCRIPTPATH/lib/utils/file-utils.sh
-source $SCRIPTPATH/lib/utils/dir-utils.sh
+UTILS_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+source $UTILS_DIR/file-utils.sh
+source $UTILS_DIR/dir-utils.sh
 
 usage()
 {
