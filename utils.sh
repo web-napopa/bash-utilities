@@ -315,14 +315,12 @@ replace_ini_entry()
 		replacementEscaped=$replacementRaw
 	fi
 	updatedLine="memory_limit = 128M"
-	# it must not be commented
-	# grep "^[^#;]*[ ]*$searchRaw" $filePath
-	if `grep -q "^[^#;]*[ ]*$searchRaw" $filePath`
+	if `grep -q "^[ \t;#]*$searchRaw" $filePath`
 	# grep -q doesnt output, only get return value: whether there is matches or not
 	then
 		#exists > replace it
 		#replace line but save inline comments
-		replace_file_line_containing "$filePath" "^[^#;]*[ \t]*$searchEscaped\([^#;]\+\)\?\([#;].*\)\?.*$" "$replacementEscaped\2"
+		replace_file_line_containing "$filePath" "^[ \t;#]*$searchEscaped\([^#;]\+\)\?\([#;].*\)\?.*$" "$replacementEscaped\2"
 		overwrite_save_file "$filePath" "$RET"
 	else
 		#doesnt exist > add it
